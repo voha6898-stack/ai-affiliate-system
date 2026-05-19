@@ -35,13 +35,29 @@ class WordPressConfig:
 class AffiliateConfig:
     # Amazon Associates
     amazon_tag: str = field(default_factory=lambda: os.getenv("AMAZON_AFFILIATE_TAG", ""))
-    amazon_region: str = "com"  # com, co.uk, etc.
+    amazon_region: str = "com"
 
-    # ClickBank
+    # ClickBank / ShareASale
     clickbank_id: str = field(default_factory=lambda: os.getenv("CLICKBANK_ID", ""))
-
-    # ShareASale
     shareasale_id: str = field(default_factory=lambda: os.getenv("SHAREASALE_ID", ""))
+
+    # Hosting — $65-100/sale
+    bluehost_tracking_id: str = field(default_factory=lambda: os.getenv("BLUEHOST_TRACKING_ID", ""))
+    hostinger_ref: str = field(default_factory=lambda: os.getenv("HOSTINGER_REF", ""))
+
+    # VPN — 40% commission
+    nordvpn_aff_id: str = field(default_factory=lambda: os.getenv("NORDVPN_AFF_ID", ""))
+    expressvpn_aff_id: str = field(default_factory=lambda: os.getenv("EXPRESSVPN_AFF_ID", ""))
+
+    # Email marketing — 33% recurring
+    getresponse_aff_id: str = field(default_factory=lambda: os.getenv("GETRESPONSE_AFF_ID", ""))
+
+    # AI tools — 30-45%
+    jasper_ref_code: str = field(default_factory=lambda: os.getenv("JASPER_REF_CODE", ""))
+
+    # SEO / indexing
+    google_site_verification: str = field(default_factory=lambda: os.getenv("GOOGLE_SITE_VERIFICATION", ""))
+    indexnow_key: str = field(default_factory=lambda: os.getenv("INDEXNOW_KEY", "aff2026revenue"))
 
     # Minimum commission rate to include product (%)
     min_commission_rate: float = 5.0

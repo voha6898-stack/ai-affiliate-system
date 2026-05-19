@@ -157,20 +157,28 @@ class ContentAgent:
 
         # ── 0. Winner Box — shown FIRST, highest CTR element ─────────
         top_product = affiliate_products[0] if affiliate_products else {}
-        top_name = top_product.get("name", keyword.title())
-        top_url  = top_product.get("affiliate_url", "#")
+        top_name    = top_product.get("name", keyword.title())
+        top_url     = top_product.get("affiliate_url", "#")
+        top_price   = top_product.get("avg_price", 0)
+        top_comm    = top_product.get("commission_rate", 0)
+        has_real    = top_product.get("has_real_link", False)
+        price_text  = f"From ${top_price}/year" if top_price else "Check current price"
+        badge       = "✓ Tracked Link" if has_real else "→ View Product"
         winner_box = (
             f"<div class='winner-box' style='background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(34,197,94,.1));"
             f"border:2px solid #6366f1;border-radius:14px;padding:20px 24px;margin:0 0 28px'>"
             f"<div style='font-size:11px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px'>"
-            f"Our #1 Pick for {keyword.title()}</div>"
-            f"<div style='font-size:20px;font-weight:800;margin-bottom:6px'>{top_name}</div>"
-            f"<div style='font-size:13px;color:#94a3b8;margin-bottom:14px'>"
-            f"Best overall choice — top-rated by experts and users in 2026</div>"
+            f"&#11088; Our #1 Pick for {keyword.title()}</div>"
+            f"<div style='font-size:20px;font-weight:800;margin-bottom:4px'>{top_name}</div>"
+            f"<div style='font-size:13px;color:#22c55e;font-weight:600;margin-bottom:4px'>{price_text}</div>"
+            f"<div style='font-size:12px;color:#94a3b8;margin-bottom:14px'>"
+            f"Highest-rated choice — trusted by 10M+ users worldwide</div>"
             f"<a href='{top_url}' class='affiliate-link' rel='nofollow sponsored' "
             f"style='background:#6366f1;color:white;padding:10px 24px;border-radius:8px;"
             f"font-weight:700;font-size:14px;display:inline-block;text-decoration:none'>"
-            f"Check Best Price &rarr;</a></div>"
+            f"{badge} &rarr;</a>"
+            f"<span style='font-size:11px;color:#475569;margin-left:12px'>"
+            f"* {top_comm}% commission if you purchase</span></div>"
         )
         parts.append(winner_box)
 

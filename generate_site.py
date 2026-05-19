@@ -6,7 +6,11 @@ GitHub Pages: https://voha6898-stack.github.io/ai-affiliate-system/
 import os
 import sqlite3
 import re
+import json
+import urllib.request
 from datetime import datetime
+from dotenv import load_dotenv
+load_dotenv()
 
 DB_PATH = "data/affiliate_ai.db"
 OUT_DIR = "docs"
@@ -105,6 +109,8 @@ def build_index(articles):
 
     empty = '<div style="text-align:center;padding:80px;color:var(--muted)"><h3>No articles yet</h3><p>Check back soon — AI is generating content daily.</p></div>' if not articles else ""
 
+    gsc = os.getenv("GOOGLE_SITE_VERIFICATION", "")
+    gsc_tag = f'<meta name="google-site-verification" content="{gsc}">' if gsc else ""
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -113,6 +119,7 @@ def build_index(articles):
 <title>{SITE_NAME} — Expert Reviews & Buying Guides 2026</title>
 <meta name="description" content="AI-powered expert reviews, comparisons and buying guides. Find the best products in 2026.">
 <link rel="canonical" href="{SITE_URL}/">
+{gsc_tag}
 {CSS}
 </head>
 <body>
@@ -312,6 +319,43 @@ def build_nojekyll():
     open(f"{OUT_DIR}/.nojekyll", "w").close()
 
 
+def build_indexnow_key():
+    """Create IndexNow key file so Bing/Yandex can verify ownership."""
+    key = os.getenv("INDEXNOW_KEY", "aff2026revenue")
+    write(f"{OUT_DIR}/{key}.txt", key)
+
+
+def submit_indexnow(articles):
+    """Submit new article URLs to Bing/Yandex via IndexNow for instant indexing."""
+    key = os.getenv("INDEXNOW_KEY", "aff2026revenue")
+    urls = [f"{SITE_URL}/article/{a['slug']}/" for a in articles[:10]]
+    if not urls:
+        return
+
+    payload = json.dumps({
+        "host": "voha6898-stack.github.io",
+        "key": key,
+        "keyLocation": f"{SITE_URL}/{key}.txt",
+        "urlList": urls
+    }).encode("utf-8")
+
+    for endpoint in [
+        "https://api.indexnow.org/indexnow",
+        "https://www.bing.com/indexnow",
+    ]:
+        try:
+            req = urllib.request.Request(
+                endpoint,
+                data=payload,
+                headers={"Content-Type": "application/json; charset=utf-8"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                print(f"[OK] IndexNow {endpoint.split('/')[2]}: {resp.status} — {len(urls)} URLs submitted")
+        except Exception as e:
+            print(f"[--] IndexNow {endpoint.split('/')[2]}: {e}")
+
+
 # ── MAIN ─────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     articles = get_articles()
@@ -323,6 +367,7 @@ if __name__ == "__main__":
     build_index(articles)
     build_robots()
     build_nojekyll()
+    build_indexnow_key()
     build_sitemap(articles)
 
     niches = {}
@@ -338,3 +383,6 @@ if __name__ == "__main__":
     print(f"[OK] Site generated: {len(articles)} articles, {len(niches)} niches")
     print(f"[OK] Output: {OUT_DIR}/")
     print(f"[OK] URL: {SITE_URL}/")
+
+    # Submit to Bing/Yandex via IndexNow for instant indexing
+    submit_indexnow(articles)
