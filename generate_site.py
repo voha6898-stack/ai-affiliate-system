@@ -268,6 +268,10 @@ def build_robots():
           f"User-agent: *\nAllow: /\nSitemap: {SITE_URL}/sitemap.xml\n")
 
 
+def build_nojekyll():
+    open(f"{OUT_DIR}/.nojekyll", "w").close()
+
+
 # ── MAIN ─────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     articles = get_articles()
@@ -275,6 +279,7 @@ if __name__ == "__main__":
 
     build_index(articles)
     build_robots()
+    build_nojekyll()
     build_sitemap(articles)
 
     niches = {}

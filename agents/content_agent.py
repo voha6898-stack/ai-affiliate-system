@@ -78,6 +78,7 @@ class ContentAgent:
             product_context=product_context,
             target_words=target_words,
             content_type=content_type,
+            affiliate_products=affiliate_products,
         )
 
         # Post-process: insert affiliate links, optimize structure
@@ -128,11 +129,14 @@ class ContentAgent:
         product_context: str,
         target_words: int,
         content_type: str,
+        affiliate_products: List[Dict] = None,
     ) -> str:
         """
         Section-by-section generation — đảm bảo 2000+ từ bất kể model.
         Mỗi call sinh 1 section ~300-400 từ, gộp lại = bài hoàn chỉnh.
         """
+        if affiliate_products is None:
+            affiliate_products = []
         sections = content_brief.get("required_sections", [])
         faqs = content_brief.get("faq_questions", [])[:5]
 
