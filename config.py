@@ -111,13 +111,16 @@ class AppConfig:
     scheduler: SchedulerConfig = field(default_factory=SchedulerConfig)
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
 
-    # Target niches to operate in
+    # Target niches — sorted by commission rate (highest first)
     target_niches: List[str] = field(default_factory=lambda: [
-        "web hosting",
-        "vpn services",
-        "online fitness programs",
-        "project management software",
-        "email marketing tools"
+        "web hosting",            # Bluehost $65-100/sale, Hostinger $60+
+        "vpn services",           # NordVPN 40%, ExpressVPN 36%
+        "password managers",      # 1Password 25% recurring, Dashlane 20%
+        "antivirus software",     # Norton 20-30%, Bitdefender 40%
+        "email marketing tools",  # GetResponse 33% recurring, ConvertKit 30%
+        "project management software",  # Monday.com $50+, Notion 20%
+        "online courses",         # Udemy 10-30%, Teachable 30%
+        "ai writing tools",       # Jasper 30%, Copy.ai 30% recurring
     ])
 
     # SERP API (use free tier of serpapi or valueserp)

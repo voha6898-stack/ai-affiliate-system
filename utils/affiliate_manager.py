@@ -27,13 +27,17 @@ class AffiliateManager:
         Get best affiliate products for a given niche + keyword.
         Combines database products with AI-suggested products.
         """
-        # Check database first
-        db_products = AffiliateProductDB.get_by_niche(niche, limit=8)
+        # 1. High-commission hardcoded programs (fastest, most reliable)
+        hc_products = self._get_high_commission_products(niche)
+        if len(hc_products) >= 3:
+            return hc_products
 
+        # 2. Check database
+        db_products = AffiliateProductDB.get_by_niche(niche, limit=8)
         if len(db_products) >= 5:
             return db_products
 
-        # AI suggests products if database is sparse
+        # 3. AI suggests products if database is sparse
         ai_products = self._ai_suggest_products(niche, keyword)
 
         # Save AI suggestions to database
@@ -51,6 +55,60 @@ class AffiliateManager:
 
         # Return combined list
         return AffiliateProductDB.get_by_niche(niche, limit=10) or ai_products
+
+    # High-commission programs mapped by niche keyword
+    HIGH_COMMISSION_PROGRAMS = {
+        "web hosting": [
+            {"name": "Hostinger", "platform": "direct", "affiliate_url": "https://www.hostinger.com/affiliates", "commission_rate": 60, "avg_price": 60, "category": "web hosting"},
+            {"name": "Bluehost", "platform": "direct", "affiliate_url": "https://www.bluehost.com/affiliate", "commission_rate": 65, "avg_price": 65, "category": "web hosting"},
+            {"name": "SiteGround", "platform": "direct", "affiliate_url": "https://www.siteground.com/affiliates.htm", "commission_rate": 50, "avg_price": 80, "category": "web hosting"},
+        ],
+        "vpn services": [
+            {"name": "NordVPN", "platform": "direct", "affiliate_url": "https://nordvpn.com/affiliates/", "commission_rate": 40, "avg_price": 99, "category": "vpn"},
+            {"name": "ExpressVPN", "platform": "direct", "affiliate_url": "https://www.expressvpn.com/affiliates", "commission_rate": 36, "avg_price": 100, "category": "vpn"},
+            {"name": "Surfshark", "platform": "direct", "affiliate_url": "https://surfshark.com/affiliates", "commission_rate": 40, "avg_price": 48, "category": "vpn"},
+        ],
+        "email marketing tools": [
+            {"name": "GetResponse", "platform": "direct", "affiliate_url": "https://www.getresponse.com/affiliate", "commission_rate": 33, "avg_price": 180, "category": "email marketing"},
+            {"name": "ConvertKit", "platform": "direct", "affiliate_url": "https://convertkit.com/affiliates", "commission_rate": 30, "avg_price": 240, "category": "email marketing"},
+            {"name": "ActiveCampaign", "platform": "direct", "affiliate_url": "https://www.activecampaign.com/partner", "commission_rate": 20, "avg_price": 300, "category": "email marketing"},
+        ],
+        "password managers": [
+            {"name": "1Password", "platform": "direct", "affiliate_url": "https://1password.com/affiliate", "commission_rate": 25, "avg_price": 36, "category": "security"},
+            {"name": "Dashlane", "platform": "direct", "affiliate_url": "https://www.dashlane.com/partners", "commission_rate": 20, "avg_price": 60, "category": "security"},
+        ],
+        "antivirus software": [
+            {"name": "Norton 360", "platform": "amazon", "product_id": "B09WDY7HGN", "affiliate_url": "", "commission_rate": 25, "avg_price": 40, "category": "antivirus"},
+            {"name": "Bitdefender Total Security", "platform": "direct", "affiliate_url": "https://www.bitdefender.com/affiliates/", "commission_rate": 40, "avg_price": 45, "category": "antivirus"},
+        ],
+        "project management software": [
+            {"name": "Monday.com", "platform": "direct", "affiliate_url": "https://monday.com/affiliate", "commission_rate": 30, "avg_price": 240, "category": "productivity"},
+            {"name": "Notion", "platform": "direct", "affiliate_url": "https://www.notion.com/affiliates", "commission_rate": 20, "avg_price": 96, "category": "productivity"},
+        ],
+        "ai writing tools": [
+            {"name": "Jasper AI", "platform": "direct", "affiliate_url": "https://www.jasper.ai/affiliate", "commission_rate": 30, "avg_price": 468, "category": "ai tools"},
+            {"name": "Copy.ai", "platform": "direct", "affiliate_url": "https://www.copy.ai/affiliates", "commission_rate": 45, "avg_price": 360, "category": "ai tools"},
+        ],
+        "online courses": [
+            {"name": "Udemy Courses", "platform": "direct", "affiliate_url": "https://www.udemy.com/affiliate/", "commission_rate": 15, "avg_price": 15, "category": "education"},
+            {"name": "Coursera Plus", "platform": "direct", "affiliate_url": "https://www.coursera.org/about/affiliates", "commission_rate": 45, "avg_price": 399, "category": "education"},
+        ],
+    }
+
+    def _get_high_commission_products(self, niche: str) -> List[Dict]:
+        """Return hardcoded high-commission products for known niches."""
+        for key, products in self.HIGH_COMMISSION_PROGRAMS.items():
+            if key in niche.lower() or niche.lower() in key:
+                # Build proper affiliate URLs with Amazon tag where needed
+                result = []
+                for p in products:
+                    p = p.copy()
+                    if p["platform"] == "amazon" and p.get("product_id"):
+                        tag = config.affiliate.amazon_tag
+                        p["affiliate_url"] = f"https://www.amazon.com/dp/{p['product_id']}?tag={tag}" if tag else f"https://www.amazon.com/dp/{p['product_id']}"
+                    result.append(p)
+                return result
+        return []
 
     def _ai_suggest_products(self, niche: str, keyword: str) -> List[Dict]:
         """Use Claude to suggest relevant affiliate products."""

@@ -29,14 +29,16 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Wake up Render blog
+        continue-on-error: true
         run: |
-          echo "Waking up Render blog (cold start can take up to 120s)..."
-          for i in 1 2 3; do
-            STATUS=$(curl -s --max-time 60 "${{ secrets.BLOG_URL }}/" -o /dev/null -w "%{http_code}")
-            echo "Attempt $i - Blog status: $STATUS"
-            if [ "$STATUS" = "200" ]; then break; fi
-            sleep 10
+          echo "Waking up Render blog..."
+          for i in 1 2 3 4; do
+            STATUS=$(curl -s --max-time 60 "${{ secrets.BLOG_URL }}/" -o /dev/null -w "%{http_code}" 2>/dev/null || echo "000")
+            echo "Attempt $i - Status: $STATUS"
+            if [ "$STATUS" = "200" ]; then echo "Blog is up!"; exit 0; fi
+            sleep 15
           done
+          echo "Blog slow to wake — publisher will retry with 120s timeout"
 
       - name: Run AI Publisher
         env:

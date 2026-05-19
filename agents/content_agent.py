@@ -149,14 +149,33 @@ class ContentAgent:
         sys = "You are an expert SEO content writer. Write in HTML. Be thorough and detailed."
         parts = []
 
+        # ── 0. Winner Box — shown FIRST, highest CTR element ─────────
+        top_product = affiliate_products[0] if affiliate_products else {}
+        top_name = top_product.get("name", keyword.title())
+        top_url  = top_product.get("affiliate_url", "#")
+        winner_box = (
+            f"<div class='winner-box' style='background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(34,197,94,.1));"
+            f"border:2px solid #6366f1;border-radius:14px;padding:20px 24px;margin:0 0 28px'>"
+            f"<div style='font-size:11px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px'>"
+            f"Our #1 Pick for {keyword.title()}</div>"
+            f"<div style='font-size:20px;font-weight:800;margin-bottom:6px'>{top_name}</div>"
+            f"<div style='font-size:13px;color:#94a3b8;margin-bottom:14px'>"
+            f"Best overall choice — top-rated by experts and users in 2026</div>"
+            f"<a href='{top_url}' class='affiliate-link' rel='nofollow sponsored' "
+            f"style='background:#6366f1;color:white;padding:10px 24px;border-radius:8px;"
+            f"font-weight:700;font-size:14px;display:inline-block;text-decoration:none'>"
+            f"Check Best Price &rarr;</a></div>"
+        )
+        parts.append(winner_box)
+
         # ── 1. Intro + Quick Answer box (~350 từ) ─────────────────────
         intro = claude.complete_quality(sys,
             f"{ctx}\n\nWrite the article INTRODUCTION (350 words) in HTML:\n"
-            f"- Start with <blockquote class='quick-answer'><strong>Quick Answer:</strong> [2-sentence summary]</blockquote>\n"
-            f"- Then write an engaging <h1>{title}</h1> followed by 3 paragraphs introducing the topic\n"
-            f"- Mention keyword '{keyword}' naturally\n"
+            f"- Start with <blockquote class='quick-answer'><strong>Quick Answer:</strong> [2-sentence summary including #1 pick: {top_name}]</blockquote>\n"
+            f"- Then write an engaging intro followed by 3 paragraphs introducing the topic\n"
+            f"- Mention keyword '{keyword}' naturally 2-3 times\n"
             f"- Products to reference: {product_context}\n"
-            f"- Write ONLY the intro, nothing else.", max_tokens=2000)
+            f"- Write ONLY the intro, no h1 heading needed.", max_tokens=2000)
         parts.append(intro)
 
         # ── 2. Each content section (~300 từ each) ────────────────────
@@ -187,14 +206,31 @@ class ContentAgent:
             f"Write ALL questions above.", max_tokens=1500)
         parts.append(faq)
 
-        # ── 5. Conclusion (~150 từ) ───────────────────────────────────
+        # ── 5. Conclusion + Final CTA (~150 từ) ──────────────────────
         conclusion = claude.complete_cheap(sys,
             f"{ctx}\n\nWrite a conclusion (150 words) for this article.\n"
-            f"- Summarize key takeaways\n"
-            f"- Give a clear recommendation\n"
-            f"- End with a call-to-action\n"
+            f"- Summarize top 3 key takeaways\n"
+            f"- Give a clear #1 recommendation: {top_name}\n"
+            f"- End with strong call-to-action sentence\n"
             f"Format: <h2>Final Verdict</h2><p>...</p>", max_tokens=600)
         parts.append(conclusion)
+
+        # ── 6. Bottom CTA box ─────────────────────────────────────────
+        bottom_cta = (
+            f"<div style='background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);"
+            f"border-radius:12px;padding:20px 24px;margin:24px 0;text-align:center'>"
+            f"<p style='font-weight:700;font-size:16px;margin-bottom:8px'>"
+            f"Ready to get the best {keyword}?</p>"
+            f"<p style='color:#94a3b8;font-size:13px;margin-bottom:14px'>"
+            f"Our top pick {top_name} is currently available — check the latest price below.</p>"
+            f"<a href='{top_url}' class='affiliate-link' rel='nofollow sponsored' "
+            f"style='background:#22c55e;color:white;padding:12px 28px;border-radius:8px;"
+            f"font-weight:700;font-size:15px;display:inline-block;text-decoration:none'>"
+            f"See Best Price on Amazon &rarr;</a>"
+            f"<p style='font-size:11px;color:#475569;margin-top:10px'>"
+            f"* Affiliate link — we earn a small commission at no extra cost to you</p></div>"
+        )
+        parts.append(bottom_cta)
 
         return "<article>\n" + "\n\n".join(p for p in parts if p) + "\n</article>"
 
