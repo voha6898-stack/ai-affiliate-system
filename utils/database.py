@@ -45,9 +45,11 @@ def init_db():
             CREATE TABLE IF NOT EXISTS articles (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 keyword_id INTEGER REFERENCES keywords(id),
+                niche TEXT DEFAULT '',
                 title TEXT NOT NULL,
                 slug TEXT,
                 content TEXT,
+                meta_description TEXT DEFAULT '',
                 word_count INTEGER DEFAULT 0,
                 wp_post_id INTEGER,
                 wp_url TEXT,
@@ -104,7 +106,22 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_articles_status ON articles(status);
             CREATE INDEX IF NOT EXISTS idx_performance_date ON performance(date);
         """)
+        # Migrate existing DBs that are missing new columns
+        _migrate_db(conn)
     logger.info("Database initialized.")
+
+
+def _migrate_db(conn):
+    """Add new columns to existing tables without breaking old data."""
+    existing = {r[1] for r in conn.execute("PRAGMA table_info(articles)")}
+    migrations = [
+        ("niche",            "ALTER TABLE articles ADD COLUMN niche TEXT DEFAULT ''"),
+        ("meta_description", "ALTER TABLE articles ADD COLUMN meta_description TEXT DEFAULT ''"),
+    ]
+    for col, sql in migrations:
+        if col not in existing:
+            conn.execute(sql)
+            logger.info(f"DB migrated: added articles.{col}")
 
 
 class KeywordDB:
@@ -126,14 +143,33 @@ class KeywordDB:
 
     @staticmethod
     def get_pending(limit: int = 10) -> List[Dict]:
+        """Round-robin across niches — pick 1 top keyword per niche, cycle through all niches."""
         with get_db() as conn:
-            rows = conn.execute(
-                """SELECT * FROM keywords WHERE status = 'pending'
-                   ORDER BY buyer_intent_score DESC, search_volume DESC
-                   LIMIT ?""",
-                (limit,)
-            ).fetchall()
-            return [dict(r) for r in rows]
+            # Get distinct niches that still have pending keywords
+            niches = [r[0] for r in conn.execute(
+                "SELECT DISTINCT niche FROM keywords WHERE status='pending' AND niche IS NOT NULL ORDER BY niche"
+            ).fetchall()]
+
+            if not niches:
+                return []
+
+            # Pick the best keyword from each niche, rotating up to `limit` total
+            results = []
+            per_niche = max(1, limit // max(len(niches), 1))
+            for niche in niches:
+                rows = conn.execute(
+                    """SELECT * FROM keywords WHERE status='pending' AND niche=?
+                       ORDER BY buyer_intent_score DESC, search_volume DESC
+                       LIMIT ?""",
+                    (niche, per_niche)
+                ).fetchall()
+                results.extend([dict(r) for r in rows])
+                if len(results) >= limit:
+                    break
+
+            # Sort the combined list by opportunity, return top `limit`
+            results.sort(key=lambda x: (x.get("buyer_intent_score", 0), x.get("search_volume", 0)), reverse=True)
+            return results[:limit]
 
     @staticmethod
     def update_status(keyword_id: int, status: str):
@@ -144,13 +180,16 @@ class KeywordDB:
 class ArticleDB:
     @staticmethod
     def add(keyword_id: int, title: str, slug: str, content: str,
-            word_count: int, affiliate_links_count: int) -> int:
+            word_count: int, affiliate_links_count: int,
+            niche: str = "", meta_description: str = "") -> int:
         with get_db() as conn:
             cur = conn.execute(
                 """INSERT INTO articles
-                   (keyword_id, title, slug, content, word_count, affiliate_links_count)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
-                (keyword_id, title, slug, content, word_count, affiliate_links_count)
+                   (keyword_id, niche, title, slug, content, meta_description,
+                    word_count, affiliate_links_count)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (keyword_id, niche, title, slug, content, meta_description,
+                 word_count, affiliate_links_count)
             )
             return cur.lastrowid
 
@@ -168,7 +207,7 @@ class ArticleDB:
     def get_needs_update(days_old: int = 90) -> List[Dict]:
         with get_db() as conn:
             rows = conn.execute(
-                """SELECT a.*, k.keyword FROM articles a
+                """SELECT a.*, k.keyword, k.niche as kw_niche FROM articles a
                    JOIN keywords k ON a.keyword_id = k.id
                    WHERE a.status = 'published'
                    AND julianday('now') - julianday(a.published_at) > ?
@@ -181,7 +220,11 @@ class ArticleDB:
     def get_all_published() -> List[Dict]:
         with get_db() as conn:
             rows = conn.execute(
-                "SELECT * FROM articles WHERE status = 'published' ORDER BY published_at DESC"
+                """SELECT a.*, COALESCE(NULLIF(a.niche,''), k.niche, '') as niche
+                   FROM articles a
+                   LEFT JOIN keywords k ON a.keyword_id = k.id
+                   WHERE a.status = 'published'
+                   ORDER BY a.published_at DESC"""
             ).fetchall()
             return [dict(r) for r in rows]
 

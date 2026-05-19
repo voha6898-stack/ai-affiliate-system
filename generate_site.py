@@ -19,8 +19,17 @@ def get_articles():
         return []
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    # JOIN keywords to always get niche even for old articles without niche column
     rows = conn.execute(
-        "SELECT * FROM articles WHERE status='published' ORDER BY published_at DESC"
+        """SELECT a.id, a.keyword_id, a.title, a.slug, a.content, a.word_count,
+                  a.affiliate_links_count, a.status, a.seo_score,
+                  a.published_at, a.updated_at, a.created_at,
+                  COALESCE(NULLIF(a.niche,''), k.niche, '') as niche,
+                  COALESCE(NULLIF(a.meta_description,''), '') as meta_description
+           FROM articles a
+           LEFT JOIN keywords k ON a.keyword_id = k.id
+           WHERE a.status='published'
+           ORDER BY a.published_at DESC"""
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
@@ -129,6 +138,9 @@ def build_index(articles):
 
 
 # ── Article page ──────────────────────────────────────────────────────────────
+_all_articles: list = []  # populated by main() for related articles lookup
+
+
 def build_article(a):
     slug = a["slug"]
     url = f"{SITE_URL}/article/{slug}/"
@@ -209,11 +221,39 @@ def build_article(a):
     <p style="font-size:14px;color:var(--muted);margin-bottom:16px">Explore more expert reviews on our site.</p>
     <a href="{SITE_URL}/" style="background:var(--primary);color:white;padding:10px 24px;border-radius:8px;display:inline-block;font-weight:600">Browse All Guides</a>
   </div>
+  {_build_related(a)}
 </div>
 {FOOTER}
 </body>
 </html>"""
     write(f"{OUT_DIR}/article/{slug}/index.html", html)
+
+
+def _build_related(current):
+    """3 related articles from same niche (or random if not enough)."""
+    niche = current.get("niche", "")
+    others = [x for x in _all_articles if x["slug"] != current["slug"]]
+    same = [x for x in others if x.get("niche") == niche]
+    picks = (same + others)[:3]
+    if not picks:
+        return ""
+    cards = ""
+    for r in picks:
+        rurl = f"{SITE_URL}/article/{r['slug']}/"
+        cards += (
+            f'<a href="{rurl}" style="background:var(--card);border:1px solid var(--border);'
+            f'border-radius:10px;padding:16px;display:block;color:var(--text);text-decoration:none">'
+            f'<div style="font-size:11px;color:var(--primary);font-weight:600;text-transform:uppercase;margin-bottom:6px">'
+            f'{safe(r.get("niche","").title())}</div>'
+            f'<div style="font-size:14px;font-weight:600;line-height:1.4">{safe(r["title"])}</div>'
+            f'</a>'
+        )
+    return (
+        f'<div style="margin-top:48px"><h3 style="font-size:18px;font-weight:700;margin-bottom:16px">'
+        f'Related Articles</h3>'
+        f'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">'
+        f'{cards}</div></div>'
+    )
 
 
 # ── Niche page ────────────────────────────────────────────────────────────────
@@ -276,6 +316,9 @@ def build_nojekyll():
 if __name__ == "__main__":
     articles = get_articles()
     print(f"Generating site: {len(articles)} articles...")
+
+    # Populate global for related articles
+    _all_articles[:] = articles
 
     build_index(articles)
     build_robots()

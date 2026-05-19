@@ -28,14 +28,23 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run AI Publisher
+      - name: Research keywords for all niches
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          AMAZON_AFFILIATE_TAG: ${{ secrets.AMAZON_AFFILIATE_TAG }}
           BLOG_URL: ""
           BLOG_API_SECRET: ""
+        run: python main.py research
+
+      - name: Publish 2 articles (1 per niche rotation)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           AMAZON_AFFILIATE_TAG: ${{ secrets.AMAZON_AFFILIATE_TAG }}
-        run: python main.py publish 1
+          BLOG_URL: ""
+          BLOG_API_SECRET: ""
+        run: python main.py publish 2
 
       - name: Generate static site (GitHub Pages)
         run: python generate_site.py
@@ -45,5 +54,5 @@ jobs:
           git config user.email "ai-bot@github-actions.com"
           git config user.name "AI Affiliate Bot"
           git add data/ docs/
-          git diff --staged --quiet || git commit -m "auto: publish article $(date '+%Y-%m-%d %H:%M') UTC"
+          git diff --staged --quiet || git commit -m "auto: publish articles $(date '+%Y-%m-%d %H:%M') UTC"
           git push || true

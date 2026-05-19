@@ -99,7 +99,9 @@ class ContentAgent:
             slug=slug,
             content=article_html,
             word_count=word_count,
-            affiliate_links_count=affiliate_count
+            affiliate_links_count=affiliate_count,
+            niche=niche,
+            meta_description=meta_desc,
         )
 
         # Mark keyword as in_progress
