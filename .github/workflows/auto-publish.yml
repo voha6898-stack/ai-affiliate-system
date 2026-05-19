@@ -1,0 +1,51 @@
+name: AI Affiliate Auto Publisher
+
+on:
+  schedule:
+    - cron: '0 1 * * *'    # 8:00 sang Viet Nam (UTC+7)
+    - cron: '0 7 * * *'    # 14:00 trua Viet Nam
+    - cron: '0 13 * * *'   # 20:00 toi Viet Nam
+  workflow_dispatch:         # Nut bam chay thu cong tren GitHub
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Wake up Render blog
+        run: |
+          echo "Waking up Render blog (cold start can take 60s)..."
+          curl -s --max-time 90 "${{ secrets.BLOG_URL }}/" -o /dev/null -w "Blog status: %{http_code}\n" || true
+
+      - name: Run AI Publisher
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          BLOG_URL: ${{ secrets.BLOG_URL }}
+          BLOG_API_SECRET: ${{ secrets.BLOG_API_SECRET }}
+          AMAZON_AFFILIATE_TAG: ${{ secrets.AMAZON_AFFILIATE_TAG }}
+        run: python main.py publish 1
+
+      - name: Save database to repo
+        run: |
+          git config user.email "ai-bot@github-actions.com"
+          git config user.name "AI Affiliate Bot"
+          git add data/affiliate_ai.db 2>/dev/null || true
+          git diff --staged --quiet || git commit -m "auto: publish article $(date '+%Y-%m-%d %H:%M') UTC"
+          git push || true
