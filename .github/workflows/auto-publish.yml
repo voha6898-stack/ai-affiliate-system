@@ -30,8 +30,13 @@ jobs:
 
       - name: Wake up Render blog
         run: |
-          echo "Waking up Render blog (cold start can take 60s)..."
-          curl -s --max-time 90 "${{ secrets.BLOG_URL }}/" -o /dev/null -w "Blog status: %{http_code}\n" || true
+          echo "Waking up Render blog (cold start can take up to 120s)..."
+          for i in 1 2 3; do
+            STATUS=$(curl -s --max-time 60 "${{ secrets.BLOG_URL }}/" -o /dev/null -w "%{http_code}")
+            echo "Attempt $i - Blog status: $STATUS"
+            if [ "$STATUS" = "200" ]; then break; fi
+            sleep 10
+          done
 
       - name: Run AI Publisher
         env:
@@ -42,10 +47,10 @@ jobs:
           AMAZON_AFFILIATE_TAG: ${{ secrets.AMAZON_AFFILIATE_TAG }}
         run: python main.py publish 1
 
-      - name: Save database to repo
+      - name: Save database and articles to repo
         run: |
           git config user.email "ai-bot@github-actions.com"
           git config user.name "AI Affiliate Bot"
-          git add data/affiliate_ai.db 2>/dev/null || true
+          git add data/ 2>/dev/null || true
           git diff --staged --quiet || git commit -m "auto: publish article $(date '+%Y-%m-%d %H:%M') UTC"
           git push || true

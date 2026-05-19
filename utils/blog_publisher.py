@@ -77,7 +77,7 @@ class BlogPublisher:
                     "word_count": article.get("word_count", 0),
                     "affiliate_links_count": article.get("affiliate_links_count", 0),
                 },
-                timeout=15
+                timeout=120
             )
 
             if resp.status_code in (200, 201):
