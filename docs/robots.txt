@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://voha6898-stack.github.io/ai-affiliate-system/sitemap.xml

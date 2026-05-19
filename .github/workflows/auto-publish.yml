@@ -28,31 +28,22 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Wake up Render blog
-        continue-on-error: true
-        run: |
-          echo "Waking up Render blog..."
-          for i in 1 2 3 4; do
-            STATUS=$(curl -s --max-time 60 "${{ secrets.BLOG_URL }}/" -o /dev/null -w "%{http_code}" 2>/dev/null || echo "000")
-            echo "Attempt $i - Status: $STATUS"
-            if [ "$STATUS" = "200" ]; then echo "Blog is up!"; exit 0; fi
-            sleep 15
-          done
-          echo "Blog slow to wake — publisher will retry with 120s timeout"
-
       - name: Run AI Publisher
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          BLOG_URL: ${{ secrets.BLOG_URL }}
-          BLOG_API_SECRET: ${{ secrets.BLOG_API_SECRET }}
+          BLOG_URL: ""
+          BLOG_API_SECRET: ""
           AMAZON_AFFILIATE_TAG: ${{ secrets.AMAZON_AFFILIATE_TAG }}
         run: python main.py publish 1
 
-      - name: Save database and articles to repo
+      - name: Generate static site (GitHub Pages)
+        run: python generate_site.py
+
+      - name: Deploy to GitHub Pages
         run: |
           git config user.email "ai-bot@github-actions.com"
           git config user.name "AI Affiliate Bot"
-          git add data/ 2>/dev/null || true
+          git add data/ docs/
           git diff --staged --quiet || git commit -m "auto: publish article $(date '+%Y-%m-%d %H:%M') UTC"
           git push || true
