@@ -17,6 +17,53 @@ OUT_DIR = "docs"
 SITE_NAME = "AI Affiliate Reviews"
 SITE_URL = "https://voha6898-stack.github.io/ai-affiliate-system"
 
+# ── Ad network codes (set in .env / GitHub Secrets) ────────────────────────
+ADSENSE_PUB_ID   = os.getenv("ADSENSE_PUB_ID", "")    # e.g. ca-pub-1234567890
+MEDIANET_ID      = os.getenv("MEDIANET_ID", "")        # e.g. 8ABCDE1234
+KIT_FORM_ID      = os.getenv("KIT_FORM_ID", "")        # ConvertKit/Kit form ID
+
+def _adsense_tag() -> str:
+    if not ADSENSE_PUB_ID:
+        return ""
+    return f'<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={ADSENSE_PUB_ID}" crossorigin="anonymous"></script>'
+
+def _medianet_tag() -> str:
+    if not MEDIANET_ID:
+        return ""
+    return f'<script src="https://contextual.media.net/dmedianet.js?cid={MEDIANET_ID}" async="async"></script>'
+
+def _ad_unit() -> str:
+    """In-article ad slot — shows AdSense or Media.net if configured."""
+    if ADSENSE_PUB_ID:
+        return f"""<div style="margin:32px 0;text-align:center">
+<ins class="adsbygoogle" style="display:block;text-align:center" data-ad-layout="in-article"
+ data-ad-format="fluid" data-ad-client="{ADSENSE_PUB_ID}" data-ad-slot="AUTO"></ins>
+<script>(adsbygoogle=window.adsbygoogle||[]).push({{}});</script></div>"""
+    return ""
+
+def _email_form() -> str:
+    """Kit (ConvertKit) email capture form."""
+    if not KIT_FORM_ID:
+        return ""
+    return f"""<div style="background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.1));border:1px solid rgba(99,102,241,.4);border-radius:14px;padding:28px 24px;margin:40px 0;text-align:center">
+  <div style="font-size:13px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Free Newsletter</div>
+  <h3 style="font-size:20px;font-weight:800;margin-bottom:8px">Get Expert Reviews Weekly</h3>
+  <p style="font-size:14px;color:#94a3b8;margin-bottom:20px">Best deals, top picks, and buying guides — straight to your inbox. No spam.</p>
+  <script src="https://f.convertkit.com/{KIT_FORM_ID}/index.js" async data-uid="{KIT_FORM_ID}"></script>
+</div>"""
+
+def _social_share(url: str, title: str) -> str:
+    """Pinterest + Twitter/X sharing buttons."""
+    enc_url   = url.replace(":", "%3A").replace("/", "%2F")
+    enc_title = title.replace(" ", "%20").replace(":", "%3A")[:100]
+    pin_url   = f"https://pinterest.com/pin/create/button/?url={enc_url}&description={enc_title}"
+    tw_url    = f"https://twitter.com/intent/tweet?text={enc_title}&url={enc_url}"
+    return f"""<div style="display:flex;gap:10px;margin:32px 0;flex-wrap:wrap">
+  <span style="font-size:13px;color:#94a3b8;align-self:center">Share:</span>
+  <a href="{pin_url}" target="_blank" rel="noopener" style="background:#E60023;color:white;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">&#128204; Pinterest</a>
+  <a href="{tw_url}" target="_blank" rel="noopener" style="background:#1DA1F2;color:white;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none">&#120143; Share on X</a>
+</div>"""
+
 
 def get_articles():
     if not os.path.exists(DB_PATH):
@@ -184,6 +231,8 @@ def build_article(a):
 <meta property="og:type" content="article">
 <link rel="canonical" href="{url}">
 {schema}
+{_adsense_tag()}
+{_medianet_tag()}
 {CSS}
 <style>
 .container{{max-width:800px;margin:0 auto;padding:40px 24px 80px}}
@@ -223,6 +272,9 @@ def build_article(a):
   <div class="article-content">
     {a.get('content','')}
   </div>
+  {_ad_unit()}
+  {_social_share(url, a['title'])}
+  {_email_form()}
   <div style="background:linear-gradient(135deg,rgba(99,102,241,.2),rgba(139,92,246,.2));border:1px solid rgba(99,102,241,.3);border-radius:12px;padding:24px;margin:32px 0;text-align:center">
     <h3 style="font-size:18px;margin-bottom:8px">Found this helpful?</h3>
     <p style="font-size:14px;color:var(--muted);margin-bottom:16px">Explore more expert reviews on our site.</p>
@@ -319,6 +371,72 @@ def build_nojekyll():
     open(f"{OUT_DIR}/.nojekyll", "w").close()
 
 
+def build_static_pages():
+    """Build Privacy Policy, About, and Contact pages — required for AdSense approval."""
+    gsc = os.getenv("GOOGLE_SITE_VERIFICATION", "")
+    gsc_tag = f'<meta name="google-site-verification" content="{gsc}">' if gsc else ""
+    ad_tags = _adsense_tag() + _medianet_tag()
+
+    pages = {
+        "privacy-policy": {
+            "title": "Privacy Policy",
+            "content": f"""<h1>Privacy Policy</h1>
+<p><em>Last updated: 2026</em></p>
+<h2>Overview</h2>
+<p>{SITE_NAME} ("we", "our", "us") operates {SITE_URL}. This page explains how we handle your data.</p>
+<h2>Affiliate Disclosure</h2>
+<p>This site contains affiliate links. When you click a link and make a purchase, we may earn a commission at no extra cost to you. We only recommend products we believe provide value.</p>
+<h2>Advertising</h2>
+<p>We use Google AdSense and/or Media.net to serve ads. These networks may use cookies to personalize ads based on your browsing history. You can opt out via <a href="https://optout.aboutads.info/">aboutads.info</a>.</p>
+<h2>Cookies</h2>
+<p>We use cookies for analytics and advertising purposes. By using this site, you consent to our use of cookies.</p>
+<h2>Analytics</h2>
+<p>We use analytics tools to understand site traffic. No personally identifiable information is collected.</p>
+<h2>Contact</h2>
+<p>Questions? Email us at: <a href="mailto:voha6898@gmail.com">voha6898@gmail.com</a></p>"""
+        },
+        "about": {
+            "title": "About Us",
+            "content": f"""<h1>About {SITE_NAME}</h1>
+<p>We are an independent review site helping consumers find the best software, tools, and services in 2026.</p>
+<h2>Our Mission</h2>
+<p>We research and test products so you don't have to. Our AI-powered research system evaluates hundreds of products across multiple categories to find the best options for every budget and use case.</p>
+<h2>How We Make Money</h2>
+<p>We earn affiliate commissions when readers purchase products through our links. This doesn't affect our reviews — we maintain editorial independence and only recommend products we believe in.</p>
+<h2>Categories We Cover</h2>
+<ul>
+<li>VPN Services</li><li>Web Hosting</li><li>Email Marketing Tools</li>
+<li>AI Writing Tools</li><li>Password Managers</li><li>Antivirus Software</li>
+<li>Online Courses</li><li>Project Management Software</li>
+</ul>
+<h2>Contact</h2>
+<p>Email: <a href="mailto:voha6898@gmail.com">voha6898@gmail.com</a></p>"""
+        },
+    }
+
+    for slug, page in pages.items():
+        html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{page['title']} | {SITE_NAME}</title>
+<link rel="canonical" href="{SITE_URL}/{slug}/">
+{gsc_tag}{ad_tags}{CSS}
+</head>
+<body>
+{NAV}
+<div style="max-width:800px;margin:0 auto;padding:48px 24px 80px;line-height:1.8;font-size:16px;color:#cbd5e1">
+{page['content']}
+</div>
+{FOOTER}
+</body>
+</html>"""
+        write(f"{OUT_DIR}/{slug}/index.html", html)
+
+    print(f"[OK] Built Privacy Policy and About pages")
+
+
 def build_indexnow_key():
     """Create IndexNow key file so Bing/Yandex can verify ownership."""
     key = os.getenv("INDEXNOW_KEY", "aff2026revenue")
@@ -379,6 +497,8 @@ if __name__ == "__main__":
 
     for niche, niche_articles in niches.items():
         build_niche(niche, niche_articles)
+
+    build_static_pages()
 
     print(f"[OK] Site generated: {len(articles)} articles, {len(niches)} niches")
     print(f"[OK] Output: {OUT_DIR}/")
