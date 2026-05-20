@@ -46,6 +46,9 @@ jobs:
           BLOG_API_SECRET: ""
         run: python main.py publish 2
 
+      - name: Fix affiliate links (ensure no signup-page URLs)
+        run: python fix_affiliate_links.py
+
       - name: Generate static site (GitHub Pages)
         run: python generate_site.py
 
