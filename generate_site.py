@@ -18,9 +18,17 @@ SITE_NAME = "AI Affiliate Reviews"
 SITE_URL = "https://voha6898-stack.github.io/ai-affiliate-system"
 
 # ── Ad network codes (set in .env / GitHub Secrets) ────────────────────────
+GA4_ID           = os.getenv("GA4_ID", "")             # e.g. G-XXXXXXXXXX
 ADSENSE_PUB_ID   = os.getenv("ADSENSE_PUB_ID", "")    # e.g. ca-pub-1234567890
 MEDIANET_ID      = os.getenv("MEDIANET_ID", "")        # e.g. 8ABCDE1234
 KIT_FORM_ID      = os.getenv("KIT_FORM_ID", "")        # ConvertKit/Kit form ID
+
+def _ga4_tag() -> str:
+    if not GA4_ID:
+        return ""
+    return f"""<script async src="https://www.googletagmanager.com/gtag/js?id={GA4_ID}"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}
+gtag('js',new Date());gtag('config','{GA4_ID}');</script>"""
 
 def _adsense_tag() -> str:
     if not ADSENSE_PUB_ID:
@@ -166,7 +174,7 @@ def build_index(articles):
 <title>{SITE_NAME} — Expert Reviews & Buying Guides 2026</title>
 <meta name="description" content="AI-powered expert reviews, comparisons and buying guides. Find the best products in 2026.">
 <link rel="canonical" href="{SITE_URL}/">
-{gsc_tag}
+{gsc_tag}{_ga4_tag()}
 {CSS}
 </head>
 <body>
@@ -231,6 +239,7 @@ def build_article(a):
 <meta property="og:type" content="article">
 <link rel="canonical" href="{url}">
 {schema}
+{_ga4_tag()}
 {_adsense_tag()}
 {_medianet_tag()}
 {CSS}
@@ -375,7 +384,7 @@ def build_static_pages():
     """Build Privacy Policy, About, and Contact pages — required for AdSense approval."""
     gsc = os.getenv("GOOGLE_SITE_VERIFICATION", "")
     gsc_tag = f'<meta name="google-site-verification" content="{gsc}">' if gsc else ""
-    ad_tags = _adsense_tag() + _medianet_tag()
+    ad_tags = _ga4_tag() + _adsense_tag() + _medianet_tag()
 
     pages = {
         "privacy-policy": {
