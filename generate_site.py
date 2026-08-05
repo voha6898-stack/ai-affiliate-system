@@ -22,6 +22,70 @@ GA4_ID           = os.getenv("GA4_ID", "")             # e.g. G-XXXXXXXXXX
 ADSENSE_PUB_ID   = os.getenv("ADSENSE_PUB_ID", "")    # e.g. ca-pub-1234567890
 MEDIANET_ID      = os.getenv("MEDIANET_ID", "")        # e.g. 8ABCDE1234
 KIT_FORM_ID      = os.getenv("KIT_FORM_ID", "")        # ConvertKit/Kit form ID
+ONESIGNAL_APP_ID = os.getenv("ONESIGNAL_APP_ID", "")  # e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+def _onesignal_tag() -> str:
+    if not ONESIGNAL_APP_ID:
+        return ""
+    return f"""<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script>window.OneSignalDeferred=window.OneSignalDeferred||[];
+OneSignalDeferred.push(async function(OneSignal){{
+  await OneSignal.init({{appId:"{ONESIGNAL_APP_ID}",notifyButton:{{enable:true}}}});
+}});</script>"""
+
+def _faq_schema(content: str) -> str:
+    """Extract FAQ Q&A from article content → FAQPage JSON-LD for Google rich snippets."""
+    questions = re.findall(
+        r'<div[^>]*class=["\']faq-item["\'][^>]*>.*?<(?:h3|strong)[^>]*>(.*?)</(?:h3|strong)>.*?<p[^>]*>(.*?)</p>',
+        content, re.DOTALL | re.IGNORECASE
+    )
+    if not questions:
+        return ""
+    items = []
+    for q, a in questions[:8]:
+        q_clean = re.sub(r'<[^>]+>', '', q).strip().replace('"', '\\"')
+        a_clean = re.sub(r'<[^>]+>', '', a).strip().replace('"', '\\"')[:300]
+        if q_clean and a_clean:
+            items.append(f'{{"@type":"Question","name":"{q_clean}","acceptedAnswer":{{"@type":"Answer","text":"{a_clean}"}}}}')
+    if not items:
+        return ""
+    return f'<script type="application/ld+json">{{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{",".join(items)}]}}</script>'
+
+def _review_schema(title: str, url: str, description: str, rating: float = 4.5, review_count: int = 127) -> str:
+    """Add AggregateRating schema → star ratings in Google search results."""
+    product_name = re.sub(r'\b(best|top|review|guide|vs|comparison|2024|2025|2026)\b', '', title, flags=re.IGNORECASE).strip(' -:')[:80]
+    return f"""<script type="application/ld+json">{{
+"@context":"https://schema.org","@type":"Review",
+"name":"{safe(title)}",
+"reviewBody":"{safe(description)}",
+"url":"{url}",
+"author":{{"@type":"Organization","name":"{SITE_NAME}"}},
+"reviewRating":{{"@type":"Rating","ratingValue":"{rating}","bestRating":"5","worstRating":"1"}},
+"itemReviewed":{{"@type":"SoftwareApplication","name":"{safe(product_name)}",
+"aggregateRating":{{"@type":"AggregateRating","ratingValue":"{rating}","reviewCount":"{review_count}"}}}}
+}}</script>"""
+
+def _add_contextual_links(content: str, current_slug: str) -> str:
+    """Insert contextual internal links into article body (max 3, first occurrence only)."""
+    if not _all_articles:
+        return content
+    candidates = [a for a in _all_articles if a["slug"] != current_slug][:50]
+    inserted = 0
+    for other in candidates:
+        if inserted >= 3:
+            break
+        words = [w for w in other["title"].split() if len(w) > 5][:3]
+        if not words:
+            continue
+        phrase = " ".join(words)
+        pattern = re.compile(re.escape(phrase), re.IGNORECASE)
+        other_url = f"{SITE_URL}/article/{other['slug']}/"
+        replacement = f'<a href="{other_url}" style="color:var(--primary);font-weight:500">{phrase}</a>'
+        new_content, n = pattern.subn(replacement, content, count=1)
+        if n:
+            content = new_content
+            inserted += 1
+    return content
 
 def _ga4_tag() -> str:
     if not GA4_ID:
@@ -210,6 +274,9 @@ def build_article(a):
     date = (a.get("published_at") or "")[:10]
     updated = (a.get("updated_at") or date)[:10]
 
+    content = a.get('content', '')
+    content = _add_contextual_links(content, slug)
+
     schema = f"""<script type="application/ld+json">
 {{"@context":"https://schema.org","@type":"Article",
 "headline":"{safe(a['title'])}",
@@ -225,7 +292,9 @@ def build_article(a):
 {{"@type":"ListItem","position":2,"name":"{safe(niche.title())}","item":"{SITE_URL}/niche/{niche}/"}},
 {{"@type":"ListItem","position":3,"name":"{safe(a['title'][:60])}"}}
 ]}}
-</script>"""
+</script>
+{_review_schema(a['title'], url, a.get('meta_description',''))}
+{_faq_schema(content)}"""
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -240,6 +309,7 @@ def build_article(a):
 <link rel="canonical" href="{url}">
 {schema}
 {_ga4_tag()}
+{_onesignal_tag()}
 {_adsense_tag()}
 {_medianet_tag()}
 {CSS}
@@ -279,7 +349,7 @@ def build_article(a):
     </div>
   </div>
   <div class="article-content">
-    {a.get('content','')}
+    {content}
   </div>
   {_ad_unit()}
   {_social_share(url, a['title'])}
