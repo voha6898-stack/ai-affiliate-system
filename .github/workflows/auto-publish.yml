@@ -47,9 +47,29 @@ jobs:
         run: python main.py publish 2
 
       - name: Fix affiliate links (ensure no signup-page URLs)
+        env:
+          AMAZON_AFFILIATE_TAG: ${{ secrets.AMAZON_AFFILIATE_TAG }}
+          NORDVPN_AFF_ID: ${{ secrets.NORDVPN_AFF_ID }}
+          HOSTINGER_REF: ${{ secrets.HOSTINGER_REF }}
+          CLICKBANK_ID: ${{ secrets.CLICKBANK_ID }}
         run: python fix_affiliate_links.py
 
+      - name: Fix broken href="#" placeholder links
+        env:
+          AMAZON_AFFILIATE_TAG: ${{ secrets.AMAZON_AFFILIATE_TAG }}
+          NORDVPN_AFF_ID: ${{ secrets.NORDVPN_AFF_ID }}
+          HOSTINGER_REF: ${{ secrets.HOSTINGER_REF }}
+          CLICKBANK_ID: ${{ secrets.CLICKBANK_ID }}
+        run: python fix_broken_links.py
+
       - name: Generate static site (GitHub Pages)
+        env:
+          GA4_ID: ${{ secrets.GA4_ID }}
+          ADSENSE_PUB_ID: ${{ secrets.ADSENSE_PUB_ID }}
+          ONESIGNAL_APP_ID: ${{ secrets.ONESIGNAL_APP_ID }}
+          GOOGLE_SITE_VERIFICATION: ${{ secrets.GOOGLE_SITE_VERIFICATION }}
+          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
+          AMAZON_AFFILIATE_TAG: ${{ secrets.AMAZON_AFFILIATE_TAG }}
         run: python generate_site.py
 
       - name: Deploy to GitHub Pages
