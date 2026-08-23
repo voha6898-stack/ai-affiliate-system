@@ -112,7 +112,7 @@ class AIClient:
         elif self.provider == "groq":
             self._groq_url = "https://api.groq.com/openai/v1/chat/completions"
             self._groq_quality_model = "llama-3.3-70b-versatile"
-            self._groq_cheap_model = "llama-3.1-8b-instant"
+            self._groq_cheap_model = "llama3-8b-8192"
 
         elif self.provider == "openrouter":
             self._or_url = "https://openrouter.ai/api/v1/chat/completions"
@@ -304,6 +304,10 @@ class AIClient:
             except Exception as e:
                 logger.error(f"Groq error attempt {attempt+1}: {e}")
                 if attempt == 2:
+                    # Fallback sang Gemini nếu có key
+                    if self.gemini_key:
+                        logger.info("Groq failed — fallback to Gemini")
+                        return self._call_gemini(system_prompt, user_message, quality, max_tokens)
                     raise
                 time.sleep(5)
 
