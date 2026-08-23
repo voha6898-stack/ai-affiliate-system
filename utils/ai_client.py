@@ -103,11 +103,7 @@ class AIClient:
             self._claude = anthropic.Anthropic(api_key=self.anthropic_key)
 
         elif self.provider == "gemini":
-            # Dùng REST API trực tiếp, không cần SDK
-            self._gemini_url = "https://generativelanguage.googleapis.com/v1beta/models"
-            # Flash cho content chất lượng, Flash-Lite cho tasks rẻ tiền
-            self._gemini_quality_model = "gemini-2.5-flash"
-            self._gemini_cheap_model = "gemini-2.5-flash"  # dùng chung 1 model cho ổn định
+            pass  # attrs set below
 
         elif self.provider == "groq":
             self._groq_url = "https://api.groq.com/openai/v1/chat/completions"
@@ -118,6 +114,12 @@ class AIClient:
             self._or_url = "https://openrouter.ai/api/v1/chat/completions"
             self._or_quality_model = "google/gemini-2.5-flash"
             self._or_cheap_model = "meta-llama/llama-3.1-8b-instruct:free"
+
+        # Always init Gemini attrs if key exists — used as fallback from any provider
+        if self.gemini_key:
+            self._gemini_url = "https://generativelanguage.googleapis.com/v1beta/models"
+            self._gemini_quality_model = "gemini-2.5-flash"
+            self._gemini_cheap_model = "gemini-2.5-flash"
 
     # ─────────────────────────────────────────
     # PUBLIC INTERFACE
