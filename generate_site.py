@@ -238,6 +238,7 @@ def build_index(articles):
 <title>{SITE_NAME} — Expert Reviews & Buying Guides 2026</title>
 <meta name="description" content="AI-powered expert reviews, comparisons and buying guides. Find the best products in 2026.">
 <link rel="canonical" href="{SITE_URL}/">
+<link rel="alternate" type="application/rss+xml" title="{SITE_NAME}" href="{SITE_URL}/feed.xml">
 {gsc_tag}{_ga4_tag()}
 {CSS}
 </head>
@@ -306,6 +307,12 @@ def build_article(a):
 <meta property="og:title" content="{safe(a['title'])}">
 <meta property="og:description" content="{safe(a.get('meta_description',''))}">
 <meta property="og:type" content="article">
+<meta property="og:url" content="{url}">
+<meta property="og:site_name" content="{SITE_NAME}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{safe(a['title'])}">
+<meta name="twitter:description" content="{safe(a.get('meta_description',''))}">
+<link rel="alternate" type="application/rss+xml" title="{SITE_NAME}" href="{SITE_URL}/feed.xml">
 <link rel="canonical" href="{url}">
 {schema}
 {_ga4_tag()}
@@ -426,6 +433,38 @@ def build_niche(niche, articles):
 </body>
 </html>"""
     write(f"{OUT_DIR}/niche/{niche}/index.html", html)
+
+
+# ── RSS Feed ─────────────────────────────────────────────────────────────────
+def build_rss(articles):
+    """RSS 2.0 feed — for aggregators, Feedly, social discovery bots."""
+    items = ""
+    for a in articles[:50]:
+        url = f"{SITE_URL}/article/{a['slug']}/"
+        desc = safe(a.get("meta_description", ""))
+        pub = (a.get("published_at") or a.get("created_at") or "")[:10]
+        items += (
+            f"\n  <item>"
+            f"<title>{safe(a['title'])}</title>"
+            f"<link>{url}</link>"
+            f"<description>{desc}</description>"
+            f"<pubDate>{pub}</pubDate>"
+            f"<guid isPermaLink=\"true\">{url}</guid>"
+            f"</item>"
+        )
+    rss = (
+        f'<?xml version="1.0" encoding="UTF-8"?>\n'
+        f'<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n'
+        f'<channel>\n'
+        f'  <title>{SITE_NAME}</title>\n'
+        f'  <link>{SITE_URL}/</link>\n'
+        f'  <description>Expert affiliate reviews, buying guides and comparisons.</description>\n'
+        f'  <language>en-us</language>\n'
+        f'  <atom:link href="{SITE_URL}/feed.xml" rel="self" type="application/rss+xml"/>'
+        f'{items}\n'
+        f'</channel>\n</rss>'
+    )
+    write(f"{OUT_DIR}/feed.xml", rss)
 
 
 # ── Sitemap ───────────────────────────────────────────────────────────────────
@@ -566,6 +605,7 @@ if __name__ == "__main__":
     build_nojekyll()
     build_indexnow_key()
     build_sitemap(articles)
+    build_rss(articles)
 
     niches = {}
     for a in articles:
