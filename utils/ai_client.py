@@ -108,7 +108,7 @@ class AIClient:
         elif self.provider == "groq":
             self._groq_url = "https://api.groq.com/openai/v1/chat/completions"
             self._groq_quality_model = "llama-3.3-70b-versatile"
-            self._groq_cheap_model = "llama3-8b-8192"
+            self._groq_cheap_model = "llama-3.1-8b-instant"
 
         elif self.provider == "openrouter":
             self._or_url = "https://openrouter.ai/api/v1/chat/completions"
