@@ -66,6 +66,20 @@ jobs:
           AMAZON_AFFILIATE_TAG: ${{ secrets.AMAZON_AFFILIATE_TAG }}
         run: python generate_site.py
 
+      - name: Post to Pinterest (skip if token not set)
+        env:
+          PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
+          PINTEREST_DEFAULT_BOARD_ID: ${{ secrets.PINTEREST_DEFAULT_BOARD_ID }}
+          PINTEREST_BOARD_IDS: ${{ secrets.PINTEREST_BOARD_IDS }}
+          SITE_URL: ${{ secrets.SITE_URL || 'https://voha6898-stack.github.io/ai-affiliate-system' }}
+          SITE_NAME: ${{ secrets.SITE_NAME || 'AIToolReviewer.com' }}
+        run: |
+          if [ -n "$PINTEREST_ACCESS_TOKEN" ] && [ -n "$PINTEREST_DEFAULT_BOARD_ID" ]; then
+            python pinterest_auto.py --limit 15
+          else
+            echo "Pinterest secrets not set — skipping (set PINTEREST_ACCESS_TOKEN + PINTEREST_DEFAULT_BOARD_ID)"
+          fi
+
       - name: Deploy to GitHub Pages
         run: |
           git config user.email "ai-bot@github-actions.com"
