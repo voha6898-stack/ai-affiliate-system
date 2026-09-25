@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 from config import config
 from utils.claude_client import claude
 from utils.json_parser import parse_json
+from utils.seo import clean_seo_title
 
 logger = logging.getLogger(__name__)
 
@@ -227,7 +228,7 @@ Return JSON ONLY:
 
         # Minimal fallback
         return {
-            "recommended_title": f"Best {keyword.title()} in 2026: Top Picks Reviewed",
+            "recommended_title": clean_seo_title(keyword),
             "target_word_count": 2500,
             "content_type": "best_list",
             "required_sections": [],

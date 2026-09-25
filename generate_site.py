@@ -27,6 +27,34 @@ MEDIANET_ID      = os.getenv("MEDIANET_ID", "")        # e.g. 8ABCDE1234
 KIT_FORM_ID      = os.getenv("KIT_FORM_ID", "")        # ConvertKit/Kit form ID
 ONESIGNAL_APP_ID = os.getenv("ONESIGNAL_APP_ID", "")  # e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
+# Client-side affiliate click tracking — anon key is safe to ship in static HTML
+# (RLS on affiliate_clicks only grants it INSERT, never SELECT/UPDATE/DELETE).
+SUPABASE_URL      = os.getenv("SUPABASE_URL", "")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
+
+
+def _click_tracker_script(article_id: int, niche: str) -> str:
+    if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+        return ""
+    endpoint = f"{SUPABASE_URL.rstrip('/')}/rest/v1/affiliate_clicks"
+    niche_js = json.dumps(niche or "")
+    return f"""<script>
+(function(){{
+  var ENDPOINT={json.dumps(endpoint)},KEY={json.dumps(SUPABASE_ANON_KEY)};
+  document.querySelectorAll('a.affiliate-link').forEach(function(el){{
+    el.addEventListener('click',function(){{
+      try{{
+        fetch(ENDPOINT,{{method:'POST',keepalive:true,headers:{{
+          'apikey':KEY,'Authorization':'Bearer '+KEY,
+          'Content-Type':'application/json','Prefer':'return=minimal'
+        }},body:JSON.stringify({{article_id:{article_id},niche:{niche_js},dest_url:el.href}})}});
+      }}catch(e){{}}
+    }},{{passive:true}});
+  }});
+}})();
+</script>"""
+
+
 def _onesignal_tag() -> str:
     if not ONESIGNAL_APP_ID:
         return ""
@@ -372,6 +400,7 @@ def build_article(a):
   {_build_related(a)}
 </div>
 {FOOTER}
+{_click_tracker_script(a['id'], niche)}
 </body>
 </html>"""
     write(f"{OUT_DIR}/article/{slug}/index.html", html)

@@ -12,6 +12,7 @@ from typing import List, Dict, Optional
 from config import config
 from utils.claude_client import claude
 from utils.database import ArticleDB, KeywordDB, AffiliateProductDB
+from utils.seo import clean_seo_title
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ class ContentAgent:
         logger.info(f"Generating content for: {keyword}")
 
         content_type = content_brief.get("content_type", "best_list")
-        title = content_brief.get("recommended_title", f"Best {keyword.title()} in 2026")
+        title = content_brief.get("recommended_title") or clean_seo_title(keyword)
         target_words = content_brief.get("target_word_count", 2500)
 
         # Build product context for affiliate insertion

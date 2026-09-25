@@ -15,7 +15,37 @@ app = Flask(__name__)
 
 DB_PATH = "data/affiliate_ai.db"
 BLOG_URL = os.getenv("BLOG_URL", "")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 PORT = 5050
+
+
+def get_real_clicks():
+    """
+    Real affiliate click count, tracked client-side from the static site into
+    Supabase. Returns None (not 0) when Supabase isn't configured yet, so the
+    dashboard can tell "no data" apart from "genuinely zero clicks".
+    """
+    if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
+        return None
+    try:
+        import requests
+        r = requests.get(
+            f"{SUPABASE_URL.rstrip('/')}/rest/v1/affiliate_clicks",
+            headers={
+                "apikey": SUPABASE_SERVICE_ROLE_KEY,
+                "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+                "Prefer": "count=exact",
+            },
+            params={"select": "id", "limit": 1},
+            timeout=5,
+        )
+        content_range = r.headers.get("Content-Range", "")
+        if r.status_code in (200, 206) and "/" in content_range:
+            return int(content_range.rsplit("/", 1)[-1])
+    except Exception:
+        pass
+    return None
 
 
 def get_stats():
@@ -56,6 +86,8 @@ def get_stats():
     total_words = sum(a.get("word_count", 0) for a in articles)
     total_links = sum(a.get("affiliate_links_count", 0) for a in articles)
 
+    real_clicks = get_real_clicks()
+
     return {
         "articles": articles,
         "keywords_pending": keywords_pending,
@@ -67,7 +99,8 @@ def get_stats():
         "total_links": total_links,
         "revenue": round(float(perf["rev"] or 0), 2),
         "conversions": int(perf["conv"] or 0),
-        "affiliate_clicks": int(perf["aff_clicks"] or 0),
+        "affiliate_clicks": real_clicks if real_clicks is not None else int(perf["aff_clicks"] or 0),
+        "click_tracking_configured": real_clicks is not None,
         "organic_clicks": int(perf["org_clicks"] or 0),
         "products": products,
     }
@@ -272,7 +305,7 @@ def render_html(stats, blog_status="UNKNOWN", blog_stats=None):
     <div class="card">
       <div class="label">Luot click affiliate</div>
       <div class="value" style="color:#f59e0b">{stats.get('affiliate_clicks', 0):,}</div>
-      <div class="sub">{stats.get('organic_clicks', 0):,} luot doc bai</div>
+      <div class="sub">{stats.get('organic_clicks', 0):,} luot doc bai{'' if stats.get('click_tracking_configured') else ' &mdash; CHUA CAU HINH SUPABASE, so nay chi la placeholder'}</div>
     </div>
     <div class="card">
       <div class="label">SEO trung binh</div>
@@ -470,6 +503,7 @@ def api_stats():
         "total_articles": stats.get("total_articles", 0),
         "revenue": stats.get("revenue", 0),
         "affiliate_clicks": stats.get("affiliate_clicks", 0),
+        "click_tracking_configured": stats.get("click_tracking_configured", False),
         "keywords_pending": stats.get("keywords_pending", 0),
     })
 
