@@ -14,8 +14,11 @@ load_dotenv()
 
 DB_PATH = "data/affiliate_ai.db"
 OUT_DIR = "docs"
-SITE_NAME = "AI Affiliate Reviews"
-SITE_URL = "https://voha6898-stack.github.io/ai-affiliate-system"
+
+# Domain config — set SITE_URL env var when custom domain is ready.
+# Default falls back to GitHub Pages URL so nothing breaks before domain purchase.
+SITE_URL = os.getenv("SITE_URL", "https://voha6898-stack.github.io/ai-affiliate-system").rstrip("/")
+SITE_NAME = os.getenv("SITE_NAME", "AI Tool Reviewer")
 
 # ── Ad network codes (set in .env / GitHub Secrets) ────────────────────────
 GA4_ID           = os.getenv("GA4_ID", "")             # e.g. G-XXXXXXXXXX
@@ -593,6 +596,15 @@ def submit_indexnow(articles):
 
 
 # ── MAIN ─────────────────────────────────────────────────────────────────────
+def build_cname():
+    """Write docs/CNAME only when a real custom domain is configured."""
+    if "github.io" in SITE_URL:
+        return  # still on GitHub Pages default URL — no CNAME needed
+    domain = SITE_URL.replace("https://", "").replace("http://", "").split("/")[0]
+    write(f"{OUT_DIR}/CNAME", domain)
+    print(f"[OK] CNAME → {domain}")
+
+
 if __name__ == "__main__":
     articles = get_articles()
     print(f"Generating site: {len(articles)} articles...")
@@ -603,6 +615,7 @@ if __name__ == "__main__":
     build_index(articles)
     build_robots()
     build_nojekyll()
+    build_cname()
     build_indexnow_key()
     build_sitemap(articles)
     build_rss(articles)

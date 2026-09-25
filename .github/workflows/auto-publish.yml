@@ -64,6 +64,8 @@ jobs:
           GOOGLE_SITE_VERIFICATION: ${{ secrets.GOOGLE_SITE_VERIFICATION }}
           INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
           AMAZON_AFFILIATE_TAG: ${{ secrets.AMAZON_AFFILIATE_TAG }}
+          SITE_URL: ${{ secrets.SITE_URL || 'https://voha6898-stack.github.io/ai-affiliate-system' }}
+          SITE_NAME: ${{ secrets.SITE_NAME || 'AI Tool Reviewer' }}
         run: python generate_site.py
 
       - name: Post to Pinterest (skip if token not set)
