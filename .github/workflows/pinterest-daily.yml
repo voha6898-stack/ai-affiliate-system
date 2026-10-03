@@ -1,0 +1,51 @@
+name: Pinterest Daily Poster
+
+# Runs ONCE per day only — Pinterest bans accounts posting > 15 pins/day.
+# Sweet spot 2026: 5-15 pins/day with mixed buying-intent content.
+on:
+  schedule:
+    - cron: '0 2 * * *'   # 9:00 sang Viet Nam (UTC+7) — peak Pinterest browse time
+  workflow_dispatch:
+
+jobs:
+  pin:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - run: pip install -r requirements.txt
+
+      - name: Post 10 pins to Pinterest (high-commission niches first)
+        env:
+          PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
+          PINTEREST_DEFAULT_BOARD_ID: ${{ secrets.PINTEREST_DEFAULT_BOARD_ID }}
+          PINTEREST_BOARD_IDS: ${{ secrets.PINTEREST_BOARD_IDS }}
+          SITE_URL: ${{ secrets.SITE_URL || 'https://voha6898-stack.github.io/ai-affiliate-system' }}
+          SITE_NAME: ${{ secrets.SITE_NAME || 'AI Tool Reviewer' }}
+        run: |
+          if [ -n "$PINTEREST_ACCESS_TOKEN" ] && [ -n "$PINTEREST_DEFAULT_BOARD_ID" ]; then
+            python pinterest_auto.py --limit 10
+          else
+            echo "⚠️  Pinterest not configured. Set these GitHub Secrets to activate:"
+            echo "   PINTEREST_ACCESS_TOKEN — from developers.pinterest.com"
+            echo "   PINTEREST_DEFAULT_BOARD_ID — your main Pinterest board ID"
+            echo "   PINTEREST_BOARD_IDS — optional JSON for per-niche boards"
+          fi
+
+      - name: Commit pinned status to DB
+        run: |
+          git config user.email "ai-bot@github-actions.com"
+          git config user.name "AI Affiliate Bot"
+          git add data/
+          git diff --staged --quiet || git commit -m "pinterest: mark $(date '+%Y-%m-%d') pins"
+          git push || true

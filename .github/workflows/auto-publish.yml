@@ -28,6 +28,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Refresh coupon keywords (monthly update)
+        run: python seed_coupon_keywords.py
+
       - name: Publish 5 articles (balanced across niches, high-commission first)
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -69,20 +72,6 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: python generate_site.py
-
-      - name: Post to Pinterest (skip if token not set)
-        env:
-          PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
-          PINTEREST_DEFAULT_BOARD_ID: ${{ secrets.PINTEREST_DEFAULT_BOARD_ID }}
-          PINTEREST_BOARD_IDS: ${{ secrets.PINTEREST_BOARD_IDS }}
-          SITE_URL: ${{ secrets.SITE_URL || 'https://voha6898-stack.github.io/ai-affiliate-system' }}
-          SITE_NAME: ${{ secrets.SITE_NAME || 'AIToolReviewer.com' }}
-        run: |
-          if [ -n "$PINTEREST_ACCESS_TOKEN" ] && [ -n "$PINTEREST_DEFAULT_BOARD_ID" ]; then
-            python pinterest_auto.py --limit 15
-          else
-            echo "Pinterest secrets not set — skipping (set PINTEREST_ACCESS_TOKEN + PINTEREST_DEFAULT_BOARD_ID)"
-          fi
 
       - name: Deploy to GitHub Pages
         run: |

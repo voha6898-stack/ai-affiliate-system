@@ -65,11 +65,33 @@ def pick_keywords(n: int) -> list:
     for score, niche, cnt in priority:
         logger.info(f"  [{score:6.1f}] {niche} ({cnt} articles)")
 
+    # Coupon/deal keywords always go first — 3× higher conversion rate.
+    # (buyer_intent_score=10 already ranks them top, this ensures at least 2 per run)
+    coupon_terms = ("coupon", "promo code", "discount code", "black friday", "deal")
+    coupon_filter = " OR ".join(f"keyword LIKE '%{t}%'" for t in coupon_terms)
+
     selected = []
     with get_db() as conn:
+        # Slot 1-2: coupon/deal from top-2 commission niches
+        for _, niche, _ in priority[:4]:
+            if len(selected) >= min(2, n):
+                break
+            row = conn.execute(
+                f"""SELECT * FROM keywords
+                    WHERE status='pending' AND niche=? AND ({coupon_filter})
+                    ORDER BY buyer_intent_score DESC, search_volume DESC
+                    LIMIT 1""",
+                (niche,),
+            ).fetchone()
+            if row:
+                selected.append(dict(row))
+                logger.info(f"  [COUPON] [{niche}] {row['keyword']}")
+
+        # Remaining slots: balanced across niches (regular articles)
         for _, niche, _ in priority:
             if len(selected) >= n:
                 break
+            already_picked_niches_this_round = {s["niche"] for s in selected}
             row = conn.execute(
                 """SELECT * FROM keywords
                    WHERE status='pending' AND niche=?
@@ -79,7 +101,7 @@ def pick_keywords(n: int) -> list:
             ).fetchone()
             if row:
                 selected.append(dict(row))
-                logger.info(f"  → [{niche}] {row['keyword']}")
+                logger.info(f"  [ART]    [{niche}] {row['keyword']}")
 
     return selected
 
